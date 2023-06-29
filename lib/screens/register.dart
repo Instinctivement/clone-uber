@@ -1,6 +1,11 @@
+import 'package:clone_uber/global/global.dart';
+import 'package:clone_uber/screens/home.dart';
+import 'package:clone_uber/screens/login.dart';
 import 'package:email_validator/email_validator.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -22,6 +27,39 @@ class _RegisterPageState extends State<RegisterPage> {
 
   //Declare a GlobalKey
   final _formKey = GlobalKey<FormState>();
+
+  void _submit() async {
+    //Validate all the form field
+    if (_formKey.currentState!.validate()) {
+      await firebaseAuth.createUserWithEmailAndPassword(
+        email: emailTextEditingController.text.trim(), 
+        password: passwordTextEditingController.text.trim()
+      ).then((auth) async {
+          currentUser = auth.user;
+
+          if (currentUser != null) {
+            Map userMap = {
+              "id": currentUser!.uid,
+              "name": nameTextEditingController.text.trim(),
+              "email": emailTextEditingController.text.trim(),
+              "address": addressTextEditingController.text.trim(),
+              "phone": phoneTextEditingController.text.trim(),
+            };
+
+            DatabaseReference userRef = FirebaseDatabase.instance.ref().child("users");
+            userRef.child(currentUser!.uid).set(userMap);
+          }
+          await Fluttertoast.showToast(msg: "Successfully register");
+          Navigator.push(
+            context, 
+            MaterialPageRoute(builder: (c) => const MainPage()));
+        }).catchError((errorMessage){
+          Fluttertoast.showToast(msg: "Error occurent: \n $errorMessage");
+        });
+    }else{
+      Fluttertoast.showToast(msg: "Not all field are valid");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +94,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Form(
+                        key: _formKey,
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.center,
@@ -335,14 +374,38 @@ class _RegisterPageState extends State<RegisterPage> {
                                   fontSize: 20,
                                 ),
                               ),
-                              onPressed: () {},
+                              onPressed: () {
+                                _submit();
+                              },
                             ),
                             const SizedBox(height: 20),
-                            GestureDetector(
-                              child: Text(
-                                "Forgot password ?",
-                                style: TextStyle(color: Colors.amber.shade400),
-                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  "Have an account?",
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                GestureDetector(
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const LoginPage()),
+                                    );
+                                  },
+                                  child: Text(
+                                    "Sign In",
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: Colors.amber.shade400,
+                                    ),
+                                  ),
+                                )
+                              ],
                             )
                           ],
                         ),
